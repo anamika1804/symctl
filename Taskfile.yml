@@ -11,4 +11,30 @@ tasks:
   clean:
     cmds:
       - rm -rf output
+      - rm -rf ~/.symctl-tests
       - go clean
+  prepare-test-plugin:
+    cmds:
+      - |
+        mkdir -p ~/.symctl-tests/bin
+        cat > ~/.symctl-tests/bin/symctl-foo <<EOF
+        #!/bin/bash
+        echo "Hello, world from foo plugin!"
+        echo "Args: \$@"
+        sleep 1
+        echo "One!"
+        sleep 1
+        echo "Two!"
+        sleep 1
+        echo "Three!"
+        sleep 1
+        echo "Done!"
+        EOF
+        chmod +x ~/.symctl-tests/bin/symctl-foo
+    silent: false
+  test:
+    cmds:
+    - task: build
+    - task: prepare-test-plugin
+    - export PATH=~/.symctl-tests/bin:$PATH && /Users/mateusz/.symctl-tests/bin/symctl-foo bar --baz
+    - export PATH=~/.symctl-tests/bin:$PATH && ./output/symctl foo bar --baz
