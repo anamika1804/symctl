@@ -1,0 +1,14 @@
+version: '3'
+
+tasks:
+  build:
+    cmds:
+      - go build -o output/symctl main.go
+  run:
+    cmds:
+      - task: build
+      - ./output/symctl foo bar --baz
+  clean:
+    cmds:
+      - rm -rf output
+      - go clean
