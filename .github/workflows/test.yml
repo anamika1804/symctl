@@ -12,21 +12,23 @@ on:
 jobs:
   test:
     name: Test
+
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
         go-version: [ '1.21.4', '1.21.5' ]
+
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
       - name: Run tests
-        run: go test -v ./... -json > TestResults-${{ matrix.go-version }}.json
+        run: go test -v ./... -json > TestResults-${{ matrix.os }}-${{ matrix.go-version }}.json
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: tests-results-${{ matrix.go-version }}
-          path: TestResults-${{ matrix.go-version }}.json
+          name: tests-results-${{ matrix.os }}-${{ matrix.go-version }}
+          path: TestResults-${{ matrix.os }}-${{ matrix.go-version }}.json

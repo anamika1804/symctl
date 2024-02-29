@@ -3,7 +3,7 @@ version: '3'
 tasks:
   build:
     cmds:
-      - go build -o output/symctl main.go
+      - go build -o output/symctl -v ./...
   run:
     cmds:
       - task: build
