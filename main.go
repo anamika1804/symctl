@@ -1,11 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io"
+	"github.com/SymmetricalAI/symctl/internal/executor"
+	"github.com/SymmetricalAI/symctl/internal/installer"
 	"os"
-	"os/exec"
 )
 
 func main() {
@@ -17,43 +16,22 @@ func main() {
 
 	fmt.Println("Command-line arguments: ", args[1:])
 
-	pluginExecutable := fmt.Sprintf("symctl-%s", os.Args[1])
-
-	fmt.Println("Plugin executable: ", pluginExecutable)
-
-	pluginArgs := os.Args[2:]
-
-	fmt.Println("Plugin arguments: ", pluginArgs)
-
-	cmd := exec.Command(pluginExecutable, pluginArgs...)
-	fmt.Println("Executing command: ", cmd)
-
-	stdoutPipe, err := cmd.StdoutPipe()
-	if err != nil {
-		fmt.Println("Error creating StdoutPipe for Cmd:", err)
+	if len(args) < 2 {
+		fmt.Println("No command-line arguments provided")
 		return
 	}
-
-	stderrPipe, err := cmd.StderrPipe()
-	if err != nil {
-		fmt.Println("Error creating StderrPipe for Cmd:", err)
-		return
-	}
-
-	if err := cmd.Start(); err != nil {
-		fmt.Println("Error starting Cmd:", err)
-		return
-	}
-
-	multiReader := io.MultiReader(stdoutPipe, stderrPipe)
-	scanner := bufio.NewScanner(multiReader)
-
-	for scanner.Scan() {
-		fmt.Println(scanner.Text())
-	}
-
-	if err := cmd.Wait(); err != nil {
-		fmt.Println("Cmd finished with error:", err)
-		return
+	switch os.Args[1] {
+	case "version":
+		fmt.Println("Version: 0.0.1")
+	case "install":
+		if len(args) < 3 {
+			fmt.Println("No plugin address provided")
+			return
+		}
+		fmt.Println("Installer called")
+		installer.Install(os.Args[2], os.Args[3:])
+	default:
+		fmt.Println("Executor called")
+		executor.Execute(os.Args[1], os.Args[2:])
 	}
 }

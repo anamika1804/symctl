@@ -3,7 +3,7 @@ version: '3'
 tasks:
   build:
     cmds:
-      - go build -o output/symctl -v ./...
+      - go build -o output/symctl main.go
   run:
     cmds:
       - task: build
@@ -21,13 +21,11 @@ tasks:
         #!/bin/bash
         echo "Hello, world from foo plugin!"
         echo "Args: \$@"
-        sleep 1
         echo "One!"
         sleep 1
         echo "Two!"
         sleep 1
         echo "Three!"
-        sleep 1
         echo "Done!"
         EOF
         chmod +x ~/.symctl-tests/bin/symctl-foo
@@ -37,4 +35,8 @@ tasks:
     - task: build
     - task: prepare-test-plugin
     - export PATH=~/.symctl-tests/bin:$PATH && /Users/mateusz/.symctl-tests/bin/symctl-foo bar --baz
+    - export PATH=~/.symctl-tests/bin:$PATH && ./output/symctl version
+    - export PATH=~/.symctl-tests/bin:$PATH && ./output/symctl install https://lalala.com/symctl-foo --version 1.0.0
+    - export PATH=~/.symctl-tests/bin:$PATH && ./output/symctl install https://lalala.com/symctl-foo
+    - export PATH=~/.symctl-tests/bin:$PATH && ./output/symctl install
     - export PATH=~/.symctl-tests/bin:$PATH && ./output/symctl foo bar --baz
