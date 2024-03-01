@@ -8,15 +8,21 @@ tasks:
     cmds:
       - task: build
       - ./output/symctl foo bar --baz
+  clean-plugins:
+    cmds:
+      - rm -rf ~/.symctl-tests
   clean:
     cmds:
+      - task: clean-plugins
       - rm -rf output
-      - rm -rf ~/.symctl-tests
       - go clean
+  prepare-test-directory:
+    cmds:
+      - mkdir -p ~/.symctl-tests/bin
   prepare-test-plugin:
     cmds:
+      - task: prepare-test-directory
       - |
-        mkdir -p ~/.symctl-tests/bin
         cat > ~/.symctl-tests/bin/symctl-foo <<EOF
         #!/bin/bash
         echo "Hello, world from foo plugin!"
@@ -30,7 +36,7 @@ tasks:
         EOF
         chmod +x ~/.symctl-tests/bin/symctl-foo
     silent: false
-  test:
+  test-run:
     cmds:
     - task: build
     - task: prepare-test-plugin
@@ -40,3 +46,12 @@ tasks:
     - export PATH=~/.symctl-tests/bin:$PATH && ./output/symctl install https://lalala.com/symctl-foo
     - export PATH=~/.symctl-tests/bin:$PATH && ./output/symctl install
     - export PATH=~/.symctl-tests/bin:$PATH && ./output/symctl foo bar --baz
+  test-install:
+    cmds:
+      - task: build
+      - task: clean-plugins
+      - task: prepare-test-directory
+      - cp ./output/symctl ~/.symctl-tests/bin/symctl
+      - chmod +x ~/.symctl-tests/bin/symctl
+      - export PATH=~/.symctl-tests/bin:$PATH && symctl install https://raw.githubusercontent.com/SymmetricalAI/symctl-hello-sh/main/manifest.json
+
