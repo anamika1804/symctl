@@ -2,6 +2,7 @@ package installer
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 )
 
@@ -72,12 +75,25 @@ func Install(address string, args []string) {
 		return
 	}
 
-	if err := unarchiveTarGz(filePath, destDir); err != nil {
-		fmt.Printf("Error unarchiving file: %s\n", err)
-		return
+	// if url ends with .tar.gz, unarchive it
+	if filepath.Ext(url) == ".tar.gz" {
+		if err := unarchiveTarGz(filePath, destDir); err != nil {
+			fmt.Printf("Error unarchiving file: %s\n", err)
+			return
+		}
+
+		fmt.Printf("Unarchived file to %s\n", destDir)
 	}
 
-	fmt.Printf("Unarchived file to %s\n", destDir)
+	// if url ends with .zip, unzip it
+	if filepath.Ext(url) == ".zip" {
+		if err := unzip(filePath, destDir); err != nil {
+			fmt.Printf("Error unzipping file: %s\n", err)
+			return
+		}
+
+		fmt.Printf("Unzipped file to %s\n", destDir)
+	}
 
 	installDir, err := getInstallDir()
 	if err != nil {
@@ -123,15 +139,30 @@ func pickReleaseUrl(releases []Release) (string, error) {
 		}
 	}
 
-	// TODO make use of platform and os to select the right URL
-	if pickedRelease.Urls == nil {
-		return "", fmt.Errorf("no URLs found")
+	fmt.Printf("OS: %s\n", runtime.GOOS)
+	fmt.Printf("Arch: %s\n", runtime.GOARCH)
+
+	var pickedUrl *Url
+	for _, url := range pickedRelease.Urls {
+		if url.Platform == runtime.GOARCH && url.Os == runtime.GOOS {
+			pickedUrl = &url
+			break
+		}
 	}
-	if len(pickedRelease.Urls) > 1 {
-		return "", fmt.Errorf("too many URLs found")
+	// if picked url is nil check if there is url with any platform and os
+	if pickedUrl == nil {
+		for _, url := range pickedRelease.Urls {
+			if url.Platform == "any" && url.Os == "any" {
+				pickedUrl = &url
+				break
+			}
+		}
 	}
 
-	return pickedRelease.Urls[0].Url, nil
+	if pickedUrl == nil {
+		return "", fmt.Errorf("no suitable URL found")
+	}
+	return pickedUrl.Url, nil
 }
 
 func createTempDir() (string, error) {
@@ -161,6 +192,57 @@ func downloadFile(url, dir string) (string, error) {
 
 	_, err = io.Copy(out, resp.Body)
 	return filePath, err
+}
+
+func unzip(zipFile, destDir string) error {
+	zipReader, err := zip.OpenReader(zipFile)
+	if err != nil {
+		return err
+	}
+	defer zipReader.Close()
+
+	for _, file := range zipReader.File {
+		fPath := filepath.Join(destDir, file.Name)
+
+		if !strings.HasPrefix(fPath, filepath.Clean(destDir)+string(os.PathSeparator)) {
+			return fmt.Errorf("%s: illegal file path", fPath)
+		}
+
+		if file.FileInfo().IsDir() {
+			os.MkdirAll(fPath, os.ModePerm)
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(fPath), os.ModePerm); err != nil {
+			return err
+		}
+
+		outFile, err := os.OpenFile(fPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+		if err != nil {
+			return err
+		}
+
+		rc, err := file.Open()
+		if err != nil {
+			outFile.Close()
+			return err
+		}
+
+		_, err = io.Copy(outFile, rc)
+
+		// Close the file without defer to check for its error
+		if closeErr := outFile.Close(); closeErr != nil {
+			rc.Close() // Ignore the error from rc.Close() as we're already handling an error
+			return closeErr
+		}
+		rc.Close()
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func unarchiveTarGz(tarGzPath, destDir string) error {
