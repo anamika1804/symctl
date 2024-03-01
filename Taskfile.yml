@@ -54,4 +54,4 @@ tasks:
       - cp ./output/symctl ~/.symctl-tests/bin/symctl
       - chmod +x ~/.symctl-tests/bin/symctl
       - export PATH=~/.symctl-tests/bin:$PATH && symctl install https://raw.githubusercontent.com/SymmetricalAI/symctl-hello-sh/main/manifest.json
-
+      - export PATH=~/.symctl-tests/bin:$PATH && symctl hello-sh test
