@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*.*.*"
+
+jobs:
+  build:
+    name: Build
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        os: [ darwin, linux, windows ]
+        arch: [ amd64, arm64 ]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.0'
+          cache: false # Disable cache because we do not have go.sum so far
+      - name: Build
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: |
+          mkdir -p output
+          go build -o output/symctl-${{ matrix.goos }}-${{ matrix.goarch }} main.go
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: symctl-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: output/symctl-${{ matrix.goos }}-${{ matrix.goarch }}
+
+  release:
+    name: Release
+
+    runs-on: ubuntu-latest
+
+    needs: build
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: symctl-*
+          merge-multiple: true
+      - run: ls -R symctl-*
+      - uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            symctl-*
+          body: |
+            Release ${{ github.ref_name }}
