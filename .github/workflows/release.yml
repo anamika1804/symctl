@@ -13,8 +13,8 @@ jobs:
 
     strategy:
       matrix:
-        os: [ darwin, linux, windows ]
-        arch: [ amd64, arm64 ]
+        goos: [ darwin, linux, windows ]
+        goarch: [ amd64, arm64 ]
 
     steps:
       - uses: actions/checkout@v4
@@ -24,16 +24,16 @@ jobs:
           cache: false # Disable cache because we do not have go.sum so far
       - name: Build
         env:
-          GOOS: ${{ matrix.os }}
-          GOARCH: ${{ matrix.arch }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
         run: |
           mkdir -p output
-          go build -o output/symctl-${{ matrix.goos }}-${{ matrix.goarch }} main.go
+          go build -o output/symctl-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }} main.go
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: symctl-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: output/symctl-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: symctl-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: output/symctl-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}
 
   release:
     name: Release

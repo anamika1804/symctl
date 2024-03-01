@@ -75,8 +75,10 @@ func Install(address string, args []string) {
 		return
 	}
 
+	fmt.Println("Filepath extension: ", filepath.Ext(url))
+
 	// if url ends with .tar.gz, unarchive it
-	if filepath.Ext(url) == ".tar.gz" {
+	if filepath.Ext(url) == ".gz" {
 		if err := unarchiveTarGz(filePath, destDir); err != nil {
 			fmt.Printf("Error unarchiving file: %s\n", err)
 			return
