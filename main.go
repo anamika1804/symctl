@@ -22,7 +22,7 @@ func main() {
 	}
 	switch os.Args[1] {
 	case "version":
-		fmt.Println("Version: 0.0.1")
+		fmt.Println("Version: TODO") //TODO implement
 	case "install":
 		if len(args) < 3 {
 			fmt.Println("No plugin address provided")
