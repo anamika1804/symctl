@@ -3,7 +3,10 @@ version: '3'
 tasks:
   build:
     cmds:
-      - go build -o output/symctl main.go
+      - |
+        go build \
+        -ldflags "-X 'main.version=9.9.9-test'" \
+        -o output/symctl main.go
   run:
     cmds:
       - task: build
@@ -30,8 +33,6 @@ tasks:
         echo "One!"
         sleep 1
         echo "Two!"
-        sleep 1
-        echo "Three!"
         echo "Done!"
         EOF
         chmod +x ~/.symctl-tests/bin/symctl-foo
@@ -40,12 +41,13 @@ tasks:
     cmds:
     - task: build
     - task: prepare-test-plugin
-    - export PATH=~/.symctl-tests/bin:$PATH && /Users/mateusz/.symctl-tests/bin/symctl-foo bar --baz
-    - export PATH=~/.symctl-tests/bin:$PATH && ./output/symctl version
-    - export PATH=~/.symctl-tests/bin:$PATH && ./output/symctl install https://lalala.com/symctl-foo --version 1.0.0
-    - export PATH=~/.symctl-tests/bin:$PATH && ./output/symctl install https://lalala.com/symctl-foo
-    - export PATH=~/.symctl-tests/bin:$PATH && ./output/symctl install
-    - export PATH=~/.symctl-tests/bin:$PATH && ./output/symctl foo bar --baz
+    - cp ./output/symctl ~/.symctl-tests/bin/symctl
+    - export PATH=~/.symctl-tests/bin:$PATH && symctl-foo bar --baz
+    - export PATH=~/.symctl-tests/bin:$PATH && symctl version
+    - export PATH=~/.symctl-tests/bin:$PATH && symctl install https://lalala.com/symctl-foo --version 1.0.0 || true
+    - export PATH=~/.symctl-tests/bin:$PATH && symctl install https://lalala.com/symctl-foo || true
+    - export PATH=~/.symctl-tests/bin:$PATH && export DEBUG=1 && symctl install || true
+    - export PATH=~/.symctl-tests/bin:$PATH && symctl foo bar --baz
   test-install:
     cmds:
       - task: build

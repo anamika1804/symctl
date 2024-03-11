@@ -7,12 +7,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/SymmetricalAI/symctl/internal/logger"
 )
 
 type Url struct {
@@ -31,84 +34,74 @@ type Release struct {
 }
 
 func Install(address string, args []string) {
-	fmt.Printf("Installing plugin from %s with args %v\n", address, args)
+	logger.Debugf("Installing plugin from %s with args %v\n", address, args)
 
 	executablePath, err := os.Executable()
 	if err != nil {
-		fmt.Printf("Error getting executable path: %s\n", err)
-		return
+		log.Fatalf("Error getting executable path: %s\n", err)
 	}
-	fmt.Printf("Executable path: %s\n", executablePath)
+	logger.Debugf("Executable path: %s\n", executablePath)
 
 	releases, err := downloadReleases(address)
 	if err != nil {
-		fmt.Printf("Error downloading releases: %s\n", err)
-		return
+		log.Fatalf("Error downloading releases: %s\n", err)
 	}
 
-	fmt.Printf("Releases: %v\n", releases)
+	logger.Debugf("Releases: %v\n", releases)
 
 	url, err := pickReleaseUrl(releases)
 	if err != nil {
-		fmt.Printf("Error picking release URL: %s\n", err)
-		return
+		log.Fatalf("Error picking release URL: %s\n", err)
 	}
-	fmt.Printf("Downloading from %s\n", url)
+	logger.Debugf("Downloading from %s\n", url)
 
 	dir, err := createTempDir()
 	if err != nil {
-		fmt.Printf("Error creating temporary directory: %s\n", err)
-		return
+		log.Fatalf("Error creating temporary directory: %s\n", err)
 	}
 
 	filePath, err := downloadFile(url, dir)
 	if err != nil {
-		fmt.Printf("Error downloading file: %s\n", err)
-		return
+		log.Fatalf("Error downloading file: %s\n", err)
 	}
 
-	fmt.Printf("Downloaded file to %s\n", filePath)
+	logger.Debugf("Downloaded file to %s\n", filePath)
 
 	destDir := filepath.Join(dir, "unarchived")
 	if err := os.Mkdir(destDir, 0755); err != nil {
-		fmt.Printf("Error creating destination directory: %s\n", err)
-		return
+		log.Fatalf("Error creating destination directory: %s\n", err)
 	}
 
-	fmt.Println("Filepath extension: ", filepath.Ext(url))
+	logger.Debugf("Filepath extension: %s\n", filepath.Ext(url))
 
-	// if url ends with .tar.gz, unarchive it
+	// if url ends with .gz, unarchive it
 	if filepath.Ext(url) == ".gz" {
 		if err := unarchiveTarGz(filePath, destDir); err != nil {
-			fmt.Printf("Error unarchiving file: %s\n", err)
-			return
+			log.Fatalf("Error unarchiving file: %s\n", err)
 		}
 
-		fmt.Printf("Unarchived file to %s\n", destDir)
+		logger.Debugf("Unarchived file to %s\n", destDir)
 	}
 
 	// if url ends with .zip, unzip it
 	if filepath.Ext(url) == ".zip" {
 		if err := unzip(filePath, destDir); err != nil {
-			fmt.Printf("Error unzipping file: %s\n", err)
-			return
+			log.Fatalf("Error unzipping file: %s\n", err)
 		}
 
-		fmt.Printf("Unzipped file to %s\n", destDir)
+		logger.Debugf("Unzipped file to %s\n", destDir)
 	}
 
 	installDir, err := getInstallDir()
 	if err != nil {
-		fmt.Printf("Error getting install directory: %s\n", err)
-		return
+		log.Fatalf("Error getting install directory: %s\n", err)
 	}
 
 	if err := copyDir(destDir, installDir); err != nil {
-		fmt.Printf("Error copying to install directory: %s\n", err)
-		return
+		log.Fatalf("Error copying to install directory: %s\n", err)
 	}
 
-	fmt.Printf("Installed to %s\n", installDir)
+	logger.Debugf("Installed to %s\n", installDir)
 }
 
 func downloadReleases(address string) ([]Release, error) {
@@ -116,7 +109,9 @@ func downloadReleases(address string) ([]Release, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -141,8 +136,8 @@ func pickReleaseUrl(releases []Release) (string, error) {
 		}
 	}
 
-	fmt.Printf("OS: %s\n", runtime.GOOS)
-	fmt.Printf("Arch: %s\n", runtime.GOARCH)
+	logger.Debugf("OS: %s\n", runtime.GOOS)
+	logger.Debugf("Arch: %s\n", runtime.GOARCH)
 
 	var pickedUrl *Url
 	for _, url := range pickedRelease.Urls {
@@ -172,7 +167,7 @@ func createTempDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("Temporary directory created:", dir)
+	logger.Debugf("Temporary directory created: %s\n", dir)
 	return dir, nil
 }
 
@@ -181,7 +176,9 @@ func downloadFile(url, dir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	filename := filepath.Base(resp.Request.URL.Path)
 	filePath := filepath.Join(dir, filename)
@@ -190,7 +187,9 @@ func downloadFile(url, dir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer out.Close()
+	defer func() {
+		_ = out.Close()
+	}()
 
 	_, err = io.Copy(out, resp.Body)
 	return filePath, err
@@ -201,7 +200,9 @@ func unzip(zipFile, destDir string) error {
 	if err != nil {
 		return err
 	}
-	defer zipReader.Close()
+	defer func() {
+		_ = zipReader.Close()
+	}()
 
 	for _, file := range zipReader.File {
 		fPath := filepath.Join(destDir, file.Name)
@@ -211,7 +212,10 @@ func unzip(zipFile, destDir string) error {
 		}
 
 		if file.FileInfo().IsDir() {
-			os.MkdirAll(fPath, os.ModePerm)
+			err := os.MkdirAll(fPath, os.ModePerm)
+			if err != nil {
+				return err
+			}
 			continue
 		}
 
@@ -226,7 +230,7 @@ func unzip(zipFile, destDir string) error {
 
 		rc, err := file.Open()
 		if err != nil {
-			outFile.Close()
+			_ = outFile.Close()
 			return err
 		}
 
@@ -234,10 +238,10 @@ func unzip(zipFile, destDir string) error {
 
 		// Close the file without defer to check for its error
 		if closeErr := outFile.Close(); closeErr != nil {
-			rc.Close() // Ignore the error from rc.Close() as we're already handling an error
+			_ = rc.Close() // Ignore the error from rc.Close() as we're already handling an error
 			return closeErr
 		}
-		rc.Close()
+		_ = rc.Close()
 
 		if err != nil {
 			return err
@@ -252,13 +256,17 @@ func unarchiveTarGz(tarGzPath, destDir string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	gzr, err := gzip.NewReader(file)
 	if err != nil {
 		return err
 	}
-	defer gzr.Close()
+	defer func() {
+		_ = gzr.Close()
+	}()
 
 	tarReader := tar.NewReader(gzr)
 
@@ -273,7 +281,7 @@ func unarchiveTarGz(tarGzPath, destDir string) error {
 
 		path := filepath.Join(destDir, header.Name)
 
-		fmt.Printf("Unarchiving %s\n", path)
+		logger.Debugf("Unarchiving %s\n", path)
 
 		switch header.Typeflag {
 		case tar.TypeDir:
@@ -289,15 +297,15 @@ func unarchiveTarGz(tarGzPath, destDir string) error {
 				return err
 			}
 			if _, err := io.Copy(outFile, tarReader); err != nil {
-				outFile.Close()
+				_ = outFile.Close()
 				return err
 			}
 			// ensure mode is taken from source file
 			if err := outFile.Chmod(os.FileMode(header.Mode)); err != nil {
-				outFile.Close()
+				_ = outFile.Close()
 				return err
 			}
-			outFile.Close()
+			_ = outFile.Close()
 		}
 	}
 
@@ -309,13 +317,17 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer sourceFile.Close()
+	defer func() {
+		_ = sourceFile.Close()
+	}()
 
 	dstFile, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer dstFile.Close()
+	defer func() {
+		_ = dstFile.Close()
+	}()
 
 	_, err = io.Copy(dstFile, sourceFile)
 	if err != nil {

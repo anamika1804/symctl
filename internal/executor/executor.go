@@ -4,34 +4,33 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"os/exec"
+
+	"github.com/SymmetricalAI/symctl/internal/logger"
 )
 
 func Execute(plugin string, args []string) {
 	pluginExecutable := fmt.Sprintf("symctl-%s", plugin)
 
-	fmt.Println("Plugin executable: ", pluginExecutable)
-
-	fmt.Println("Plugin arguments: ", args)
+	logger.Debugf("Plugin executable: %s\n", pluginExecutable)
+	logger.Debugf("Plugin arguments: %v\n", args)
 
 	cmd := exec.Command(pluginExecutable, args...)
-	fmt.Println("Executing command: ", cmd)
+	logger.Debugf("Executing command: %v\n", cmd)
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		fmt.Println("Error creating StdoutPipe for Cmd:", err)
-		return
+		log.Fatalf("Error creating StdoutPipe for Cmd: %v\n", err)
 	}
 
 	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
-		fmt.Println("Error creating StderrPipe for Cmd:", err)
-		return
+		log.Fatalf("Error creating StderrPipe for Cmd: %v\n", err)
 	}
 
 	if err := cmd.Start(); err != nil {
-		fmt.Println("Error starting Cmd:", err)
-		return
+		log.Fatalf("Error starting Cmd: %v\n", err)
 	}
 
 	multiReader := io.MultiReader(stdoutPipe, stderrPipe)
@@ -42,7 +41,6 @@ func Execute(plugin string, args []string) {
 	}
 
 	if err := cmd.Wait(); err != nil {
-		fmt.Println("Cmd finished with error:", err)
-		return
+		log.Fatalf("Cmd finished with error: %v\n", err)
 	}
 }
