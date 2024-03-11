@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        goos: [ darwin, linux, windows ]
+        goos: [ darwin, linux ]
         goarch: [ amd64, arm64 ]
 
     steps:
@@ -43,6 +43,7 @@ jobs:
     needs: build
 
     steps:
+      - uses: actions/checkout@v4
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -53,5 +54,6 @@ jobs:
         with:
           files: |
             symctl-*
+            install/install.sh
           body: |
             Release ${{ github.ref_name }}
