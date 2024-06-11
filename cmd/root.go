@@ -64,6 +64,7 @@ func init() {
 			},
 		}
 		cmd.Flags().SetInterspersed(false)
+		cmd.DisableFlagParsing = true
 		rootCmd.AddCommand(cmd)
 	}
 }
